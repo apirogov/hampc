@@ -28,8 +28,11 @@ executable hampd
   default-language:    Haskell2010
   main-is:             Hampd/Main.hs
   build-depends:       base >=4.7 && <4.8
+                     , bytestring >=0.10
+                     , containers >=0.5
                      , text >=1.1
                      , mtl >=2.1
+                     , syb >=0.4
                      , optparse-applicative >=0.10
                      , libmpd >=0.9
                      , wai-extra >=3.0
@@ -40,9 +43,9 @@ executable hampd
                      , blaze-html >=0.7
                      , blaze-markup
                      , clay >=0.9
-  ghc-options:         -Wall -fno-warn-unused-do-bind -fno-warn-missing-signatures -fno-warn-name-shadowing
+  ghc-options:         -Wall -fno-warn-unused-do-bind -fno-warn-missing-signatures -fno-warn-name-shadowing -fno-warn-orphans
   default-extensions:  OverloadedStrings
-  -- other-extensions:    
+  other-extensions:    DeriveGeneric, StandaloneDeriving
 
 source-repository head
   type:     git

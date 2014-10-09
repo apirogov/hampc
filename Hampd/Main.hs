@@ -6,7 +6,6 @@ import           Options.Applicative
 
 import           Web.Scotty
 import           Web.Scotty.TLS
-
 import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
 import           Network.Wai.Middleware.Static        (addBase, noDots, staticPolicy, (>->))
 
@@ -31,7 +30,7 @@ main = do
 
   scottyTLS (argBind args) "server.key" "server.crt" $ do
     middleware logStdoutDev
-    middleware $ staticPolicy (noDots >-> addBase "static/images") -- for favicon.ico
+    middleware $ staticPolicy (noDots >-> addBase "static") -- for favicon.ico
 
     get "/" $ html mainPage
     mpdRoutes (argHost args) (argPort args)

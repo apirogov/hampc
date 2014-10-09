@@ -1,111 +1,193 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric, StandaloneDeriving #-}
+-- vim: set foldmethod=marker foldlevel=0:
 module Hampd.MPD where
-
+-- Imports
+-------------------------------------------------------------------a------------ {{{
+import           Data.Char (isDigit)
 import           Data.List (find)
 import           Data.String (fromString)
 import           Data.Maybe (fromMaybe)
-import qualified Data.Text.Lazy as T
+import           Data.Map (foldWithKey)
 import           Control.Applicative
+import           Control.Monad (foldM)
 import           Control.Monad.Trans (liftIO)
+import           Control.Monad.Error (throwError)
+import           System.Timeout
+
+import Data.ByteString.Internal (ByteString)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TL
 
 import qualified Network.MPD as MPD
+import           Data.Aeson hiding (json)
+import           GHC.Generics (Generic)
 import           Web.Scotty
+------------------------------------------------------------------------------- }}}
 
-escapePath = map (\c-> if c=='\\' then '/' else c)
+-- Bunch of JSON instances, manual where deriving not possible
+------------------------------------------------------------------------------- {{{
+deriving instance Generic MPD.Device
+instance ToJSON MPD.Device
+deriving instance Generic MPD.Id
+instance ToJSON MPD.Id
+deriving instance Generic MPD.PlaylistName
+instance ToJSON MPD.PlaylistName
+deriving instance Generic MPD.LsResult
+instance ToJSON MPD.LsResult
+deriving instance Generic MPD.Metadata
+instance ToJSON MPD.Metadata
+deriving instance Generic MPD.State
+instance ToJSON MPD.State
+deriving instance Generic MPD.Stats
+instance ToJSON MPD.Stats
+deriving instance Generic MPD.Status
+instance ToJSON MPD.Status
+deriving instance Generic MPD.Subsystem
+instance ToJSON MPD.Subsystem
 
-mpdRoutes :: String -> Integer -> ScottyM ()
-mpdRoutes host port = do
-    let mpdo a conv = do -- shortcut for boilerplate
+instance ToJSON ByteString where
+  toJSON = toJSON . T.decodeUtf8
+instance ToJSON MPD.Path where
+  toJSON = toJSON . MPD.toText
+instance ToJSON MPD.Value where
+  toJSON = toJSON . MPD.toText
+
+deriving instance Generic MPD.Song
+instance ToJSON MPD.Song where
+  toJSON (MPD.Song {MPD.sgFilePath=fp, MPD.sgLength=len,
+          MPD.sgId=sid, MPD.sgIndex=six, MPD.sgLastModified=lmod, MPD.sgTags=tags}) =
+    object ["sgFilePath" .= MPD.toText fp, "sgLength" .= len, "sgLastModified" .= lmod,
+             "sgId" .= sid, "sgIndex" .= six, "sgTags" .= (object $ foldWithKey f [] tags)]
+    where f k v r = ((T.pack $ show (k::MPD.Metadata)) .= (toJSON v)):r
+----------------------------------------------------------------------------------------------
+-- }}}
+
+-- enter the nth directory in given path, return new path
+enterDir :: MPD.MonadMPD m => MPD.Path -> Int -> m MPD.Path
+enterDir p n = do res <- MPD.lsInfo p
+                  if n>=0 && n<length res
+                  then case res !! n of
+                         MPD.LsDirectory d -> return d
+                         MPD.LsSong s -> return $ MPD.sgFilePath s
+                         MPD.LsPlaylist _ -> throwError $ MPD.Custom "can not enter playlist"
+                  else throwError $ MPD.Custom "invalid index"
+
+-- get path corresponding to a comma-separated list of indices starting from root directory
+getPath :: MPD.MonadMPD m => String -> m MPD.Path
+getPath str = foldM enterDir (fromString "") splitted
+  where splitted = if null str then []::[Int] else map (read . T.unpack)
+                        $ filter (not . T.null) $ T.split (not.isDigit) (T.pack str)
+
+listPlaylistById id = do
+  l <- MPD.listPlaylists
+  if id>=0 && id<length l
+  then MPD.listPlaylistInfo (l !! id)
+  else throwError $ MPD.Custom "invalid playlist id"
+
+loadPlaylistById id = do
+  l <- MPD.listPlaylists
+  if id>=0 && id<length l
+  then MPD.load (l !! id)
+  else throwError $ MPD.Custom "invalid playlist id"
+
+isOutputEnabled id = (maybe False MPD.dOutputEnabled
+                     . find (\MPD.Device{MPD.dOutputID=n} -> n==id)) <$> MPD.outputs
+
+setOutputState id b = (case b of
+                      True -> MPD.enableOutput
+                      False -> MPD.disableOutput) id
+
+-- helper to execute MPD actions and return a response as Text
+mpdexec :: ToJSON a => String -> Integer -> MPD.MPD a -> ActionM TL.Text
+mpdexec host port a = do -- shortcut for boilerplate
           pw <- param "pw"
           val <- liftIO $ MPD.withMPDEx host port pw a
           case val of
-            Left err -> return $ T.pack $ show err
-            Right v -> return $ T.pack $ conv v
+              Left err -> return $ TL.decodeUtf8 $ encode $ object ["error" .= show err]
+              Right v -> return $ TL.decodeUtf8 $ encode v
 
-    get "/:pw/ping" $ mpdo MPD.ping show >>= html
-    get "/:pw/current" $ mpdo MPD.currentSong show >>= html
-    get "/:pw/status" $ mpdo MPD.status show >>= html
-    get "/:pw/stats" $ mpdo MPD.stats show >>= html
+mpdRoutes :: String -> Integer -> ScottyM ()
+mpdRoutes host port = do
+    let mpdo a = mpdexec host port a
+        mpdo' a param = mpdo $ a param --allow passing an argument
+        prefix = "/mpd/:pw"
+        -- add an mpd route to execute an MPD action and return the result as JSON
+        getmpd route action = get (fromString (prefix++route)) $ mpdo action >>= json
+        -- same, but more flexible (pass an ActionM block), use mpdo/mpdo' inside
+        getmpd' route action = get (fromString (prefix++route)) $ action >>= json
 
-    get "/:pw/ctrl/update" $ mpdo (MPD.update Nothing) show >>= html
-    get "/:pw/ctrl/next" $ mpdo MPD.next show >>= html
-    get "/:pw/ctrl/previous" $ mpdo MPD.previous show >>= html
-    get "/:pw/ctrl/stop" $ mpdo MPD.stop show >>= html
+    getmpd "/idle" $ MPD.idle []
+    getmpd "/ping" MPD.ping
+    getmpd "/current" MPD.currentSong
+    getmpd "/status" MPD.status
+    getmpd "/stats" MPD.stats
 
-    get "/:pw/ctrl/random" $ mpdo MPD.status (show . MPD.stRandom) >>= html
-    get "/:pw/ctrl/random/:val" $ do
-      b <- param "val"
-      mpdo (MPD.random b) show >>= html
+    getmpd "/next" MPD.next
+    getmpd "/previous" MPD.previous
+    getmpd "/stop" MPD.stop
+    getmpd "/update" $ MPD.update Nothing
 
-    get "/:pw/ctrl/play" $ mpdo (MPD.play Nothing) show >>= html
-    get "/:pw/ctrl/play/:val" $ do
+    getmpd "/random" $ MPD.stRandom <$> MPD.status
+    getmpd' "/random/:val" $ param "val" >>= mpdo' MPD.random
+
+    getmpd "/play" $ MPD.play Nothing
+    getmpd' "/play/:val" $ do
       p <- param "val"
-      mpdo (MPD.play $ Just p) show >>= html
+      mpdo $ MPD.play $ Just p
 
-    get "/:pw/ctrl/pause" $ mpdo MPD.status (show . (==MPD.Paused) . MPD.stState) >>= html
-    get "/:pw/ctrl/pause/:val" $ do
-      b <- param "val"
-      mpdo (MPD.pause b) show >>= html
+    getmpd "/pause" $ (==MPD.Paused) . MPD.stState <$> MPD.status
+    getmpd' "/pause/:val" $ param "val" >>= mpdo' MPD.pause
 
-    get "/:pw/ctrl/seek" $ mpdo MPD.status (show . MPD.stTime) >>= html
-    get "/:pw/ctrl/seek/:val" $ do
+    getmpd "/seek" $ MPD.stTime <$> MPD.status
+    getmpd' "/seek/:val" $ do
       p <- param "val"
-      mpdo (do id <- (fromMaybe (MPD.Id 0) . MPD.stSongID) <$> MPD.status
-               MPD.seekId id p) show >>= html
+      mpdo $ fromMaybe (MPD.Id 0) . MPD.stSongID <$> MPD.status >>= (flip MPD.seekId) p
 
-    get "/:pw/ctrl/volume" $ mpdo MPD.status (show . (fromMaybe 0) . MPD.stVolume) >>= html
-    get "/:pw/ctrl/volume/:val" $ do
-      p <- param "val"
-      mpdo (MPD.setVolume p) show >>= html
+    getmpd "/volume" $ (fromMaybe 0) . MPD.stVolume <$> MPD.status
+    getmpd' "/volume/:val" $ param "val" >>= mpdo' MPD.setVolume
 
-    get "/:pw/ctrl/crossfade" $ mpdo MPD.status (show . MPD.stXFadeWidth) >>= html
-    get "/:pw/ctrl/crossfade/:val" $ do
-      s <- param "val"
-      mpdo (MPD.crossfade s) show >>= html
+    getmpd "/crossfade" $ MPD.stXFadeWidth <$> MPD.status
+    getmpd' "/crossfade/:val" $ param "val" >>= mpdo' MPD.crossfade
 
-    get "/:pw/ctrl/repeat" $ mpdo MPD.status (show . MPD.stRepeat) >>= html
-    get "/:pw/ctrl/repeat/:val" $ do
-      b <- param "val"
-      mpdo (MPD.repeat b) show >>= html
+    getmpd "/repeat" $ MPD.stRepeat <$> MPD.status
+    getmpd' "/repeat/:val" $ param "val" >>= mpdo' MPD.repeat
 
-    get "/:pw/ctrl/single" $ mpdo MPD.status (show . MPD.stSingle) >>= html
-    get "/:pw/ctrl/single/:val" $ do
-      b <- param "val"
-      mpdo (MPD.single b) show >>= html
+    getmpd "/single" $ MPD.stSingle <$> MPD.status
+    getmpd' "/single/:val" $ param "val" >>= mpdo' MPD.single
 
-    get "/:pw/ctrl/consume" $ mpdo MPD.status (show . MPD.stConsume) >>= html
-    get "/:pw/ctrl/consume/:val" $ do
-      b <- param "val"
-      mpdo (MPD.consume b) show >>= html
+    getmpd "/consume" $ MPD.stConsume <$> MPD.status
+    getmpd' "/consume/:val" $ param "val" >>= mpdo' MPD.consume
 
-    get "/:pw/ctrl/outputs" $ mpdo MPD.outputs show >>= html
-    get "/:pw/ctrl/outputs/:index" $ do
-      n <- param "index"
-      mpdo ((maybe False MPD.dOutputEnabled
-            . find (\MPD.Device{MPD.dOutputID=id} -> id==n))
-            <$> MPD.outputs) show >>= html
-    get "/:pw/ctrl/outputs/:index/:val" $ do
-      n <- param "index"
-      b <- param "val"
-      mpdo ((if b then MPD.enableOutput else MPD.disableOutput) n) show >>= html
-
-    get "/:pw/database/:path" $ do
+    --path is comma-sep. list of indices
+    getmpd' "/browse/:path" $ do
       path <- param "path"
-      mpdo (MPD.lsInfo $ fromString $ map (\c-> if c=='\\' then '/' else c) path) show >>= html
+      mpdo $ getPath path >>= MPD.lsInfo
 
-    get "/:pw/queue" $ mpdo (MPD.playlistInfo Nothing) show >>= html
-    get "/:pw/queue/clear" $ mpdo MPD.clear show >>= html
-    get "/:pw/queue/shuffle" $ mpdo (MPD.shuffle Nothing) show >>= html
-    get "/:pw/queue/add/:path" $ do
+    getmpd "/queue" $ MPD.playlistInfo Nothing
+    getmpd "/shuffle" $ MPD.shuffle Nothing
+    getmpd "/clear" MPD.clear
+
+    getmpd' "/add/:path" $ do
       path <- param "path"
-      mpdo (MPD.add $ fromString $ escapePath path) show >>= html
-    get "/:pw/queue/delete/:index" $ do
-      n <- param "index"
-      mpdo (MPD.delete n) show >>= html
-    get "/:pw/queue/move/:ind/:idest" $ do
+      mpdo $ getPath path >>= MPD.add
+
+    getmpd' "/delete/:index" $ param "index" >>= mpdo' MPD.delete
+    getmpd' "/move/:ind/:idest" $ do
       s <- param "ind"
       d <- param "idest"
-      mpdo (MPD.move s d) show >>= html
+      mpdo $ MPD.move s d
 
--- TODO: return as JSON DATA, support for playlists, fix unicode paths in libmpd?
--- start client side
+    getmpd "/outputs" MPD.outputs
+    getmpd' "/outputs/:index" $ param "index" >>= mpdo' isOutputEnabled
+    getmpd' "/outputs/:index/:val" $ do
+      n <- param "index"
+      b <- param "val"
+      mpdo $ setOutputState n b
+
+    getmpd "/playlists" MPD.listPlaylists
+    getmpd' "/playlists/:id" $ param "id" >>= mpdo' listPlaylistById
+    getmpd' "/playlists/:id/load" $ param "id" >>= mpdo' loadPlaylistById
+
+-- TODO: support for queries? playlist creation/modification?

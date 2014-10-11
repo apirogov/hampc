@@ -9,9 +9,13 @@ import           Data.String (fromString)
 import           Data.Maybe (fromMaybe)
 import           Data.Map (foldWithKey)
 import           Control.Applicative
-import           Control.Monad (foldM)
+import           Control.Monad (foldM, forever)
 import           Control.Monad.Trans (liftIO)
 import           Control.Monad.Error (throwError)
+import           Control.Concurrent
+
+import           Control.Concurrent.STM
+import           Data.Time.Clock.POSIX (getPOSIXTime)
 import           System.Timeout
 
 import Data.ByteString.Internal (ByteString)
@@ -21,6 +25,7 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TL
 
 import qualified Network.MPD as MPD
+import           Network.HTTP.Types (status204)
 import           Data.Aeson hiding (json)
 import           GHC.Generics (Generic)
 import           Web.Scotty
@@ -108,6 +113,14 @@ mpdexec host port a = do -- shortcut for boilerplate
               Left err -> return $ TL.decodeUtf8 $ encode $ object ["error" .= show err]
               Right v -> return $ TL.decodeUtf8 $ encode v
 
+-- from monad-loops
+iterateUntil :: Monad m => (a -> Bool) -> m a -> m a
+iterateUntil p x = do
+    y <- x
+    if p y
+        then return y
+        else iterateUntil p x
+
 mpdRoutes :: String -> Integer -> ScottyM ()
 mpdRoutes host port = do
     let mpdo a = mpdexec host port a
@@ -118,7 +131,25 @@ mpdRoutes host port = do
         -- same, but more flexible (pass an ActionM block), use mpdo/mpdo' inside
         getmpd' route action = get (fromString (prefix++route)) $ action >>= json
 
-    getmpd "/idle" $ MPD.idle []
+    --start infinite idle process on server side, share events with clients
+    shared <- liftIO $ atomically $ newTVar ([], 0::Integer)
+    liftIO $ forkIO $ forever $ do
+      val <- MPD.withMPDEx host port "" $ MPD.idle []
+      time <- (round <$> getPOSIXTime) :: IO Integer
+      tex <- case val of
+        Left _ -> return []
+        Right v -> return v
+      atomically $ writeTVar shared (tex, time)
+
+    get (fromString (prefix++"/idle/:stamp")) $ do
+      lastt <- param "stamp"
+      val <- liftIO $ timeout (30*1000000) $ iterateUntil (\(_,t)-> t>(lastt::Integer)) $ do
+        threadDelay 1000000
+        atomically $ readTVar shared
+      case val of
+        Nothing -> status status204 >> html "" -- we stop idling for this client
+        Just r  -> json $ TL.decodeUtf8 $ encode r
+
     getmpd "/ping" MPD.ping
     getmpd "/current" MPD.currentSong
     getmpd "/status" MPD.status
@@ -161,6 +192,9 @@ mpdRoutes host port = do
     getmpd' "/consume/:val" $ param "val" >>= mpdo' MPD.consume
 
     --path is comma-sep. list of indices
+    getmpd' "/path/:path" $ do
+      path <- param "path"
+      mpdo $ getPath path
     getmpd' "/browse/:path" $ do
       path <- param "path"
       mpdo $ getPath path >>= MPD.lsInfo

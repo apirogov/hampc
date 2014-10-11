@@ -40,7 +40,7 @@ layout t b = docTypeHtml $ do
              navBar >> b
 
              script' "//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"
-             script' "//raw.github.com/furf/jquery-ui-touch-punch/master/jquery.ui.touch-punch.min.js"
+             script' "//raw.githubusercontent.com/julien-maurel/jQuery-Storage-API/master/jquery.storageapi.min.js"
              script' "//johnny.github.io/jquery-sortable/js/jquery-sortable.js"
              script' "//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
              script' "//seiyria.github.io/bootstrap-slider/javascripts/bootstrap-slider.js"
@@ -55,7 +55,7 @@ navBar = div ! class_ "navbar navbar-inverse navbar-fixed-top" ! customAttribute
                      span ! class_ "icon-bar" $ ""
                      span ! class_ "icon-bar" $ ""
                      span ! class_ "icon-bar" $ ""
-              a ! class_ "navbar-brand" ! href "#" $
+              span ! class_ "navbar-brand" $
                 img ! src "hampd.png" ! width "32" ! height "32" ! alt "hampd" >> (span $ "hampd")
 
             div ! class_ "navbar-collapse collapse" $ do
@@ -81,7 +81,7 @@ navBar = div ! class_ "navbar navbar-inverse navbar-fixed-top" ! customAttribute
                   input ! type_ "text" ! class_ "form-control" ! placeholder "Search"
 
 panelQueue = div ! class_ "panel panel-primary" ! id "panelQueue" $ do
-              div ! class_ "panel-heading" $ b ! id "panel-heading" $ "Queue"
+              div ! class_ "panel-heading" $ b $ "Queue"
               div ! class_ "panel-body" $ do
                 h1 $ do
                   glyphicon "play" ! id "state"
@@ -98,16 +98,27 @@ panelQueue = div ! class_ "panel panel-primary" ! id "panelQueue" $ do
                 tbody ""
 
 panelBrowse = div ! class_ "panel panel-primary" ! id "panelBrowse" $ do
-                div ! class_ "panel-heading" $ b ! id "panel-heading" $ "Database"
-                div ! class_ "panel-body" $ do
-                  ol ! id "path" ! class_ "breadcrumb" $ ""
-                  table ! id "directory" ! class_ "table table-hover" $ do
-                    thead $ tr $ th "" >> th "Title" >> th "Duration" >> th ""
-                    tbody ""
+                div ! class_ "panel-heading" $ b $ "Database"
+                ol ! id "path" ! class_ "breadcrumb" $ ""
+                table ! id "directory" ! class_ "table table-hover" $ do
+                  thead $ tr $ th "" >> th "Title" >> th "Duration" >> th ""
+                  tbody ""
 
 panelSettings = div ! class_ "panel panel-primary" ! id "panelSettings" $ do
-                  div ! class_ "panel-heading" $ b ! id "panel-heading" $ "Settings"
-                  div ! class_ "panel-body" $ ""
+                  div ! class_ "panel-heading" $ b $ "Settings"
+                  div ! class_ "panel-body" $ do
+                    div ! class_ "panel panel-success" ! id "panelPassword" $ do
+                      div ! class_ "panel-heading" $ "MPD Password"
+                      div ! class_ "panel-body" $
+                        div ! class_ "input-group" $ do
+                          input ! type_ "password" ! class_ "form-control" ! id "pw"
+                          span ! class_ "input-group-btn" $
+                            button ! class_ "btn btn-default" ! type_ "button" ! id "btnsetpw" $ "Set"
+                    div ! class_ "panel panel-default" $ do
+                      div ! class_ "panel-heading" $ "Outputs"
+                      table ! id "outputs" ! class_ "table table-hover" $ do
+                        thead $ tr $ th "Name" >> th ""
+                        tbody ""
 
 mainPage = pack $ renderHtml $ layout "hampd - home" $
             div ! class_ "container starter-template" $

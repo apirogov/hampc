@@ -35,10 +35,13 @@ executable hampd
                      , syb >=0.4
                      , optparse-applicative >=0.10
                      , libmpd >=0.9
+                     , http-types >=0.8
                      , wai-extra >=3.0
                      , wai-middleware-static
                      , scotty >=0.9
                      , scotty-tls >=0.3
+                     , stm >=2.4
+                     , time >=1.4
                      , aeson >=0.7
                      , blaze-html >=0.7
                      , blaze-markup

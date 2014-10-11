@@ -13,6 +13,9 @@ data Args = Args {
               argHost :: String
             , argPort :: Integer
             , argBind :: Int
+            , argTLS :: Bool
+            , argTLSKey :: String
+            , argTLSCrt :: String
             }
 
 parseArgs :: Parser Args
@@ -24,11 +27,19 @@ parseArgs = Args
         <*> option auto (long "port" <> short 'b' <> metavar "PORT"
          <> help "Port to bind hampd to" <> value 8080 <> showDefault)
 
+        <*> switch      (long "secure" <> short 's' <> help "Use HTTPS")
+        <*> strOption   (long "key" <> short 'k' <> metavar "KEYFILE"
+         <> help "Server key for HTTPS" <> value "server.key" <> showDefault)
+        <*> strOption   (long "crt" <> short 'c' <> metavar "CRTFILE"
+         <> help "Server certificate for HTTPS" <> value "server.crt" <> showDefault)
+
 main :: IO ()
 main = do
   args <- execParser $ info (helper <*> parseArgs) (fullDesc <> progDesc "Start the hampd client.")
-
-  scottyTLS (argBind args) "server.key" "server.crt" $ do
+  let runScotty = if argTLS args
+            then scottyTLS (argBind args) (argTLSKey args) (argTLSCrt args)
+            else scotty (argBind args)
+  runScotty $ do
     middleware logStdoutDev
     middleware $ staticPolicy (noDots >-> addBase "static") -- for favicon.ico
 

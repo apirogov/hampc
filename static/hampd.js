@@ -1,42 +1,44 @@
-//TODO:
-//Browse database, add stuff
-//add Settings panel:
-//  add output state+toggling
-//  MPD password setting -> Cookie?
-//add Query support
-//add saved playlist support
-//include stream?
-//FIXME:
-//reduce glitches
-//fix problem with hanging idle connections - proper timeout
-//make usable on phone - jqueryui sortable + mobile + touch-punch?
-
-//latest infos from server
+//latest infos from server and other stuff stored here
 var MPD = {
   status : null,
   queue  : null,
   current: null,
   outputs: null,
-  waiting: 0 //number of running requests
+  password: '',
+  currdir: [], //currently browsed directory as path of indices
+  lasttime: 0, //last timestamp received from server
+  waiting: 0  //number of running requests
 }
-var sliderCooldown = false; //lock to prevent sliders to fire too much
+//read MPD pw if stored
+if ($.localStorage.isSet('mpdpw')) {
+  MPD.password = $.localStorage.get('mpdpw');
+  $('#pw').val('blablablub'); //to keep away the too curious
+}
 
 //entry function
 $(document).ready(function(){
   //init sliders
-  $("#volume").slider();
-  $("#progress").slider({tooltip:'hide',id:"progressbar"}); //id required for css
+  $('#volume').slider();
+  $('#progress').slider({tooltip:'hide',id:"progressbar"}); //id required for css
   
   //init local timer (current pos, length)
   trackTimer();
-
   //initial interface update
   updateInterface();
 
   //event handlers
+  // nav
   $('#navqueue').click(loadTabCallback('#navqueue','#panelQueue'));
   $('#navbrowse').click(loadTabCallback('#navbrowse','#panelBrowse'));
   $('#navsettings').click(loadTabCallback('#navsettings','#panelSettings'));
+
+  // url handler - simulate click
+  var anchor = window.location.href.replace(/^.*#/, '');
+  if (anchor=="settings") {
+    $('#navsettings').trigger('click');
+  } else if (anchor=="browse") {
+    $('#navbrowse').trigger('click');
+  }
 
   $('#btnprevious').click(onPreviousClick);
   $('#btnstop').click(onStopClick);
@@ -44,6 +46,7 @@ $(document).ready(function(){
   $('#btnnext').click(onNextClick);
   $('#volume').on('slideStop', onVolumeSlide);
 
+  // queue
   $('#progress').on('slideStop', onSongSlide);
   $('#queue').sortable({
     containerSelector: 'table',
@@ -53,12 +56,17 @@ $(document).ready(function(){
     onDrop: onQueueDrop
   });
 
+  // right col
   $('#btnconsume').click(onConsumeClick);
   $('#btnrepeat').click(onRepeatClick);
   $('#btnsingle').click(onSingleClick);
   $('#btnrandom').click(onRandomClick);
   $('#btnupdate').click(onUpdateClick);
   $('#btnclear').click(onClearClick);
+
+  // Settings
+  $('#btnsetpw').click(onSetPwClick);
+  $('#pw').keypress(onPwChange);
 
   doPoll();          //init long polling
 });
@@ -69,6 +77,7 @@ function updateInterface() {
   updateControls();
   updateCurrentSong();
   updateOutputs();
+  updateDirectory();
 }
 
 //we dont ask MPD for the current position all the time
@@ -79,8 +88,8 @@ function trackTimer() {
     trackTimer.enabled = false;
   }
 
+  updateProgress(trackTimer.time);
   if (trackTimer.enabled===true) {
-    updateProgress(trackTimer.time);
     if (trackTimer.time[0]<trackTimer.time[1]) {
       trackTimer.time[0] = trackTimer.time[0]+1;
     } else {
@@ -187,6 +196,50 @@ function rowFromSong(song) {
   return r;
 }
 
+// similar but for dir view
+function rowFromDirSong(i, song) {
+  var tags = song.sgTags;
+  var artist = getTag(tags.Artist);
+  var file = song.sgFilePath.replace(/^.*[\\\/]/, '');
+  var title = getTag(tags.Title, file);
+  var dur = secToTime(parseInt(song.sgLength, 10));
+  var r = '<tr>'
+  r += '<td>'+icon('music')+'</td>';
+  r+='<td onclick="onDirAddClick('+i+')" style="cursor:pointer;">';
+  if (artist != '')
+    r += artist + ' - ';
+  r += title + '</td><td>' + dur + '</td>';
+  r += '<td></td>';
+  r += '</tr>';
+  return r;
+}
+
+// helper to generate a row for the outputs
+function rowFromOutput(output) {
+  var name = output.dOutputName;
+  var val = output.dOutputEnabled;
+  var iconname = val ? 'volume-up' : 'volume-off';
+  var r = '<tr>'
+  r += '<td>'+name+'</td>';
+  r += '<td>' +icon(iconname,'onOutputSet('+output.dOutputID+','+(!val)+');') +'</td>';
+  r += '</tr>';
+  return r;
+}
+
+function rowFromDirEntry(i, item) {
+  if (item.tag=='LsDirectory') {
+    var name=item.contents.replace(/^.*\//,'');
+    var r ='<tr><td>'+icon('folder-open')+'</td>';
+    r += '<td><a onclick="onDirEnterClick('+i+');" style="cursor:pointer;">'
+      +name+'</a></td><td /><td>'+icon('plus','onDirAddClick('+i+');')+'</td>';
+    return r;
+  } else if (item.tag=='LsPlaylist') { //we dont include playlists in dir tree
+    return '';
+  } else if (item.tag=='LsSong') {
+    return rowFromDirSong(i, item.contents);
+  }
+}
+
 // ---- update methods (read from MPD) ----
 
 function updateCurrentSong(song) {
@@ -246,31 +299,60 @@ function updateControls() {
 
 function updateQueue() {
   mpdget('queue', function(data) {
-      MPD.queue = JSON.parse(data); 
-      var songs = MPD.queue;
-      $('#queue > tbody').html('');
-      $.each(songs, function(i, song) {
-        $('#queue > tbody').append(rowFromSong(song));
-      })
+    MPD.queue = JSON.parse(data); 
+    var songs = MPD.queue;
+    $('#queue > tbody').html('');
+    $.each(songs, function(i, song) {
+      $('#queue > tbody').append(rowFromSong(song));
+    });
   });
 }
 
 function updateOutputs() {
   mpdget('outputs', function(data) {
-      MPD.outputs = JSON.parse(data); 
-      var outputs = MPD.outputs;
-      $.each(outputs, function(i, output) {
-        //TODO: Update state
-      })
+    MPD.outputs = JSON.parse(data); 
+    var outputs = MPD.outputs;
+    $('#outputs > tbody').html('');
+    $.each(outputs, function(i, output) {
+      $('#outputs > tbody').append(rowFromOutput(output));
+    });
+  });
+}
+
+function updateBreadcrumb() {
+  var path = 'path/'+MPD.currdir.join(',');
+  mpdget(path, function(data) {
+    var path = JSON.parse(data).split('/');
+    $('#path').html('');
+    $('#path').append('<li><a style="cursor:pointer;" onclick="onCrumbClick(0)">root</a></li>');
+    $.each(path, function(i, item) {
+      $('#path').append('<li><a style="cursor:pointer;" '
+          +'onclick="onCrumbClick('+(i+1)+')">'+item+'</a></li>');
+    });
+  });
+}
+
+function updateDirectory() {
+  var path = 'browse/'+MPD.currdir.join(',');
+  mpdget(path, function(data) {
+    var list = JSON.parse(data);
+    updateBreadcrumb();
+    $('#directory > tbody').html('');
+    $.each(list, function(i, item) {
+      $('#directory > tbody').append(rowFromDirEntry(i,item));
+    });
   });
 }
 
 //long-polling loop to hampd server
 //Server says approximately what changed, the callback decides what requests are necessary
-//there is 1 sec delay between polling requests
-function doPoll() { setTimeout(poll, 1000); }
+function doPoll() { setTimeout(poll, 100); }
 function poll() {
-  $.get(withMPDpref('ping'), function() { //test connection to hampd server
+  $.get(withMPDpref('ping'), function(data) { //test connection to hampd server
+      var ret = JSON.parse(data);
+      if (typeof ret.error != "undefined")
+        return; //still problem
+
       //if we had a connection problem, but now it is gone
       //-> update everything to prevent glitches
       if ($('#notify').is(':visible')) {
@@ -279,7 +361,7 @@ function poll() {
       }
   });
   $.ajax({ //long poll
-    url: withMPDpref('idle'),
+    url: withMPDpref('idle/'+MPD.lasttime),
     type: 'GET',
     async: true,
     cache: false,
@@ -293,8 +375,12 @@ function poll() {
       }
     },
     success: function(data) {
-      subsystems = JSON.parse(data);
-      if (typeof subsystems.error != "undefined") { //hampd has no connection to MPD!
+      //get changed subsystems and timestamp
+      var ret = JSON.parse(data);
+      var subsystems = ret[0];
+      MPD.lasttime = ret[1];
+
+      if (subsystems.length == 0) { //hampd has no connection to MPD! Otherwise idle is never []
         $('#notify').show().addClass('alert-warning').text('No connection to MPD!');
         trackTimer.enabled = false;
         return;
@@ -317,6 +403,7 @@ function poll() {
 
           case 'OutputS':
             updateOutputs();
+            updateControls(); //because of volume
             break;
 
           //we don't care about these (at the moment)
@@ -333,7 +420,7 @@ function poll() {
 // -- helpers to communicate with hampd server --
 
 //generate a full request url
-function withMPDpref(str) { return 'mpd//'+str+'/'; }
+function withMPDpref(str) { return 'mpd/'+MPD.password+'/'+str; }
 
 //get request with semaphore-thingy for sync.
 function mpdget(url, callback) {
@@ -362,25 +449,6 @@ function loadTabCallback(buttonid, panelid) {
   };
 }
 
-function onQueueTrash(index) {
-  MPDexec('delete/'+index);
-}
-function onQueuePlay(index) {
-  MPDexec('play/'+index);
-}
-
-var deb
-function onQueueDrag(item, pos, sup, ev) {
-  $('#queue').attr('data-previndex', item.index());
-}
-function onQueueDrop(item, pos, sup, ev) {
-  var oldi = $('#queue').attr('data-previndex');
-  var newi = item.index();
-  if (oldi > newi) oldi--; //because index shift
-  MPDexec('move/'+oldi+'/'+newi); //move item
-  //cleanup
-  $('#queue').removeAttr('data-previndex');
-}
 
 function onPreviousClick() { MPDexec('previous'); }
 function onNextClick() { MPDexec('next'); }
@@ -406,3 +474,47 @@ function onSingleClick() { btnToggler('#btnsingle', 'single'); }
 function onUpdateClick() { MPDexec('update'); }
 function onClearClick() { MPDexec('clear'); }
 
+
+function onQueueTrash(index) {
+  MPDexec('delete/'+index);
+}
+function onQueuePlay(index) {
+  MPDexec('play/'+index);
+}
+
+function onQueueDrag(item, pos, sup, ev) {
+  $('#queue').attr('data-previndex', item.index());
+}
+function onQueueDrop(item, pos, sup, ev) {
+  var oldi = $('#queue').attr('data-previndex');
+  var newi = item.index();
+  if (oldi > newi) oldi--; //because index shift
+  MPDexec('move/'+oldi+'/'+newi); //move item
+  //cleanup
+  $('#queue').removeAttr('data-previndex');
+}
+
+
+function onDirEnterClick(i) {
+  MPD.currdir.push(i);
+  updateDirectory();
+}
+
+function onDirAddClick(i) { MPDexec('add/'+MPD.currdir.join(',')+','+i); }
+
+function onCrumbClick(index) {
+  MPD.currdir = MPD.currdir.slice(0,index);
+  updateDirectory();
+}
+
+
+function onPwChange() {
+  $('#panelPassword').removeClass('panel-success').addClass('panel-default');
+}
+function onSetPwClick() {
+  MPD.password = $('#pw').val();
+  $.localStorage.set('mpdpw', MPD.password);
+  $('#panelPassword').removeClass('panel-default').addClass('panel-success');
+}
+
+function onOutputSet(id, val) { MPDexec('outputs/'+id+'/'+(val?'True':'False')); }

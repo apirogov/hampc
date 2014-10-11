@@ -344,11 +344,11 @@ function updateDirectory() {
   });
 }
 
-//long-polling loop to hampd server
+//long-polling loop to hampc server
 //Server says approximately what changed, the callback decides what requests are necessary
 function doPoll() { setTimeout(poll, 100); }
 function poll() {
-  $.get(withMPDpref('ping'), function(data) { //test connection to hampd server
+  $.get(withMPDpref('ping'), function(data) { //test connection to hampc server
       var ret = JSON.parse(data);
       if (typeof ret.error != "undefined")
         return; //still problem
@@ -370,7 +370,7 @@ function poll() {
     complete: doPoll,
     error: function(jqXHR, text, error) {
       if (text!='timeout') { //connection problem!
-        $('#notify').show().addClass('alert-danger').text('No connection to hampd!');
+        $('#notify').show().addClass('alert-danger').text('No connection to hampc!');
         trackTimer.enabled = false;
       }
     },
@@ -380,7 +380,7 @@ function poll() {
       var subsystems = ret[0];
       MPD.lasttime = ret[1];
 
-      if (subsystems.length == 0) { //hampd has no connection to MPD! Otherwise idle is never []
+      if (subsystems.length == 0) { //hampc has no connection to MPD! Otherwise idle is never []
         $('#notify').show().addClass('alert-warning').text('No connection to MPD!');
         trackTimer.enabled = false;
         return;
@@ -417,7 +417,7 @@ function poll() {
   }});
 }
 
-// -- helpers to communicate with hampd server --
+// -- helpers to communicate with hampc server --
 
 //generate a full request url
 function withMPDpref(str) { return 'mpd/'+MPD.password+'/'+str; }
@@ -518,3 +518,4 @@ function onSetPwClick() {
 }
 
 function onOutputSet(id, val) { MPDexec('outputs/'+id+'/'+(val?'True':'False')); }
+

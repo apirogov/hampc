@@ -1,9 +1,9 @@
-module Hampd.Site where
+module Hampc.Site where
 import           Prelude                     hiding (div, head, id, span)
 import           Data.Monoid                 ((<>))
 
 import           Data.Text.Lazy              (toStrict, pack)
-import           Hampd.CSS                   (layoutCss)
+import           Hampc.CSS                   (layoutCss)
 
 import           Text.Blaze.Html5
 -- import           Text.Blaze.Html.Renderer.Text
@@ -24,7 +24,7 @@ layout t b = docTypeHtml $ do
              meta ! charset "utf-8"
              meta ! httpEquiv "X-UA-Compatible" ! content "IE=edge,chrome=1"
              meta ! name "viewport" ! content "width=device-width, initial-scale=1"
-             meta ! name "description" ! content "hampd - MPD web client"
+             meta ! name "description" ! content "hampc - MPD web client"
              meta ! name "author" ! content "Anton Pirogov"
 
              title t
@@ -44,7 +44,7 @@ layout t b = docTypeHtml $ do
              script' "//johnny.github.io/jquery-sortable/js/jquery-sortable.js"
              script' "//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
              script' "//seiyria.github.io/bootstrap-slider/javascripts/bootstrap-slider.js"
-             script' "hampd.js"
+             script' "hampc.js"
 
 navBar :: Html
 navBar = div ! class_ "navbar navbar-inverse navbar-fixed-top" ! customAttribute "role" "navigation" $
@@ -56,7 +56,7 @@ navBar = div ! class_ "navbar navbar-inverse navbar-fixed-top" ! customAttribute
                      span ! class_ "icon-bar" $ ""
                      span ! class_ "icon-bar" $ ""
               span ! class_ "navbar-brand" $
-                img ! src "hampd.png" ! width "32" ! height "32" ! alt "hampd" >> (span $ "hampd")
+                img ! src "hampc.png" ! width "32" ! height "32" ! alt "hampc" >> (span $ "hampc")
 
             div ! class_ "navbar-collapse collapse" $ do
               ul ! class_ "nav navbar-nav" $ do
@@ -120,7 +120,7 @@ panelSettings = div ! class_ "panel panel-primary" ! id "panelSettings" $ do
                         thead $ tr $ th "Name" >> th ""
                         tbody ""
 
-mainPage = pack $ renderHtml $ layout "hampd - home" $
+mainPage = pack $ renderHtml $ layout "hampc - home" $
             div ! class_ "container starter-template" $
               div ! class_ "row" $ do
                 div ! class_ "col-md-10 col-xs-12" $ do

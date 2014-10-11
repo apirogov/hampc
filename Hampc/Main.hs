@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
-import           Hampd.Site
-import           Hampd.MPD
+import           Hampc.Site
+import           Hampc.MPD
 
 import           Options.Applicative
 
@@ -20,12 +20,12 @@ data Args = Args {
 
 parseArgs :: Parser Args
 parseArgs = Args
-        <$> strOption   (long "mpdhost" <> short 'h' <> metavar "MPDHOST"
+        <$> strOption   (long "mpdhost" <> short 'm' <> metavar "MPDHOST"
          <> help "Hostname of the MPD server" <> value "localhost" <> showDefault)
         <*> option auto (long "mpdport" <> short 'p' <> metavar "MPDPORT"
          <> help "Port of the MPD server" <> value 6600 <> showDefault)
         <*> option auto (long "port" <> short 'b' <> metavar "PORT"
-         <> help "Port to bind hampd to" <> value 8080 <> showDefault)
+         <> help "Port to bind hampc to" <> value 8080 <> showDefault)
 
         <*> switch      (long "secure" <> short 's' <> help "Use HTTPS")
         <*> strOption   (long "key" <> short 'k' <> metavar "KEYFILE"
@@ -35,7 +35,7 @@ parseArgs = Args
 
 main :: IO ()
 main = do
-  args <- execParser $ info (helper <*> parseArgs) (fullDesc <> progDesc "Start the hampd client.")
+  args <- execParser $ info (helper <*> parseArgs) (fullDesc <> progDesc "Start the hampc client.")
   let runScotty = if argTLS args
             then scottyTLS (argBind args) (argTLSKey args) (argTLSCrt args)
             else scotty (argBind args)

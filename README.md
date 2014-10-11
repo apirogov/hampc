@@ -1,24 +1,26 @@
-hampd - MPD web client with a server written in Haskell
-=======================================================
+hampc - MPD web client
+======================
 Why?
 ---
-The design is mostly a ripoff of ympd, for two reasons:
+The design is mostly a rip-off of [ympd](https://www.github.com/notandy/ympd), for two reasons:
 
 * I like ympd a lot!
-* I have no good web design skills
+* I have no good web design skills. Seriously, I suck at it.
 
-The reason for hampd is:
+The reason for hampc is:
 
 * ympd lacks some features I would like to have
 * I am learning Haskell and wanted to try it in a web setting with scotty
 
-Unfortunately there is still no feasible solution to "The JavaScript Problem", which would
+Unfortunately there is still no feasible solution to 
+"[The JavaScript Problem](http://www.haskell.org/haskellwiki/The_JavaScript_Problem)", which would
 be easy and fun to use, while being efficient and working well as a hybrid (desktop/mobile) app,
 so it is raw JS with Bootstrap and JQuery on the client side.
 
 **What differs from ympd:**
 
-* also works over HTTPS, protecting your MPD password
+* Also works over HTTPS, protecting your MPD password
+* Move items in the Queue with drag&drop
 * You can toggle the available outputs
 * Long-polling instead of websockets (at least now)
 
@@ -27,7 +29,7 @@ Installation
 1. Clone this repository
 1. `cabal install` it (you need the Haskell Platform)
 1. For HTTPS: Create a self-signed certificate as described above (or use another one)
-1. Run `hampd` (`~/.cabal/bin` must be in your `$PATH`!)
+1. Run `hampc` (`~/.cabal/bin` must be in your `$PATH`!)
 
 Create self-signed certificate (optional)
 -----------------------------------------

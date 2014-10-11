@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Hampd.CSS (layoutCss) where
+module Hampc.CSS (layoutCss) where
 import Prelude hiding ((**))
 
 import           Clay

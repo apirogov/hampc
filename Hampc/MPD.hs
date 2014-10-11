@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, DeriveGeneric, StandaloneDeriving #-}
 -- vim: set foldmethod=marker foldlevel=0:
-module Hampd.MPD where
+module Hampc.MPD where
 -- Imports
 -------------------------------------------------------------------a------------ {{{
 import           Data.Char (isDigit)

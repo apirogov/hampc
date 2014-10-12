@@ -1,8 +1,8 @@
 module Hampc.Site where
-import           Prelude                     hiding (div, head, id, span)
+import           Prelude                     hiding (div, head, id, span, null)
 import           Data.Monoid                 ((<>))
 
-import           Data.Text.Lazy              (toStrict, pack)
+import           Data.Text.Lazy              (toStrict, pack, null)
 import           Hampc.CSS                   (layoutCss)
 
 import           Text.Blaze.Html5
@@ -44,6 +44,7 @@ layout t b = docTypeHtml $ do
              script' "//johnny.github.io/jquery-sortable/js/jquery-sortable.js"
              script' "//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
              script' "//seiyria.github.io/bootstrap-slider/javascripts/bootstrap-slider.js"
+             script' "jquery.jplayer.min.js"
              script' "hampc.js"
 
 navBar :: Html
@@ -62,6 +63,7 @@ navBar = div ! class_ "navbar navbar-inverse navbar-fixed-top" ! customAttribute
               ul ! class_ "nav navbar-nav" $ do
                 li ! id "navqueue" ! class_ "active" $ a ! href "#" $ "Queue"
                 li ! id "navbrowse" $ a ! href "#browse" $ "Browse"
+                li ! id "navplaylists" $ a ! href "#playlists" $ "Playlists"
                 li ! id "navsettings" $ a ! href "#settings" $ "Settings"
 
               div ! class_ "btn-toolbar navbar-btn navbar-right" ! customAttribute "role" "toolbar" $ do
@@ -72,7 +74,7 @@ navBar = div ! class_ "navbar navbar-inverse navbar-fixed-top" ! customAttribute
                   button' "btnnext" "forward" ""
                 div ! class_ "btn-group" $
                   div ! class_ "btn btn-toolbar btn-default" $ do
-                    span ! class_ "glyphicon glyphicon-volume-up" $ ""
+                    glyphicon "volume-up"
                     div ! id "volume" ! dataAttribute "slider-min" "0" ! dataAttribute "slider-max" "100"
                         ! dataAttribute "slider-step" "5" ! dataAttribute "slider-id" "volumebar"$ ""
 
@@ -80,7 +82,8 @@ navBar = div ! class_ "navbar navbar-inverse navbar-fixed-top" ! customAttribute
                 div ! class_ "form-group" $
                   input ! type_ "text" ! class_ "form-control" ! placeholder "Search"
 
-panelQueue = div ! class_ "panel panel-primary" ! id "panelQueue" $ do
+panelQueue =
+            div ! class_ "panel panel-primary" ! id "panelQueue" $ do
               div ! class_ "panel-heading" $ b $ "Queue"
               div ! class_ "panel-body" $ do
                 h1 $ do
@@ -120,7 +123,8 @@ panelSettings = div ! class_ "panel panel-primary" ! id "panelSettings" $ do
                         thead $ tr $ th "Name" >> th ""
                         tbody ""
 
-mainPage = pack $ renderHtml $ layout "hampc - home" $
+mainPage streamURL =
+          pack $ renderHtml $ layout "hampc - home" $
             div ! class_ "container starter-template" $
               div ! class_ "row" $ do
                 div ! class_ "col-md-10 col-xs-12" $ do
@@ -137,7 +141,11 @@ mainPage = pack $ renderHtml $ layout "hampc - home" $
                     div ! id "btn-responsive-block" ! class_ "btn-group-vertical btn-block btn-group-lg" $ do
                       button' "btnupdate" "refresh" "Update DB"
                       button' "btnclear" "trash" "Clear Queue"
-
-
-
+                    if null streamURL
+                    then preEscapedText ""
+                    else do
+                      div ! id "streamurl" $ preEscapedText (toStrict streamURL)
+                      div ! id "stream-jplayer" ! class_ "jp-jplayer" $ ""
+                      div ! class_ "btn-group-vertical btn-block btn-group-lg" $
+                        button' "btnstream" "play" "Stream"
 

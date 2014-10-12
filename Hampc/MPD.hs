@@ -12,6 +12,7 @@ import           Control.Applicative
 import           Control.Monad (foldM, forever)
 import           Control.Monad.Trans (liftIO)
 import           Control.Monad.Error (throwError)
+import           Control.Monad.Loops (iterateUntil)
 import           Control.Concurrent
 
 import           Control.Concurrent.STM
@@ -112,14 +113,6 @@ mpdexec host port a = do -- shortcut for boilerplate
           case val of
               Left err -> return $ TL.decodeUtf8 $ encode $ object ["error" .= show err]
               Right v -> return $ TL.decodeUtf8 $ encode v
-
--- from monad-loops
-iterateUntil :: Monad m => (a -> Bool) -> m a -> m a
-iterateUntil p x = do
-    y <- x
-    if p y
-        then return y
-        else iterateUntil p x
 
 mpdRoutes :: String -> Integer -> ScottyM ()
 mpdRoutes host port = do

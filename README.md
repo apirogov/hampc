@@ -19,9 +19,10 @@ so it is raw JS with Bootstrap and JQuery on the client side.
 
 **What differs from ympd:**
 
-* Also works over HTTPS, protecting your MPD password
 * Move items in the Queue with drag&drop
 * You can toggle the available outputs
+* Also works over HTTPS, protecting your MPD password
+* Built-in MPD stream player
 * Long-polling instead of websockets (at least now)
 
 Installation
@@ -43,7 +44,7 @@ openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
 
 Missing / TODO
 --------------
-* Support for queries
 * Support to create and manage playlists
-* Inclusion of the http stream in some way, if possible with FLAC
+* Support for queries
 * Make usable on mobile devices
+* fix stream glitching when toggling stream pause in firefox, if possible

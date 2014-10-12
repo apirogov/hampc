@@ -8,6 +8,7 @@ import           Data.Text.Lazy (Text)
 layoutCss :: Text
 layoutCss = renderWith pretty [] $ do
   body ? minHeight (px 2000)
+  element "a:focus" ? outlineStyle none
   element ".starter-template" ? marginTop (px 100)
   element "#search" ? marginRight 0
   element ".slider-selection" ? background (rgb 186 186 186)
@@ -17,6 +18,7 @@ layoutCss = renderWith pretty [] $ do
     height $ px 15
     marginTop $ px 3
   element "#time" ? fontSize (pt 16)
+  element "#streamurl" ? display displayNone
   element "#notify" ? display displayNone
   element "#panelBrowse" ? display displayNone
   element "#panelSettings" ? display displayNone

@@ -4,15 +4,26 @@ var MPD = {
   queue  : null,
   current: null,
   outputs: null,
+  stream:  null,
   password: '',
   currdir: [], //currently browsed directory as path of indices
   lasttime: 0, //last timestamp received from server
   waiting: 0  //number of running requests
 }
+
 //read MPD pw if stored
 if ($.localStorage.isSet('mpdpw')) {
   MPD.password = $.localStorage.get('mpdpw');
   $('#pw').val('blablablub'); //to keep away the too curious
+}
+//collect stream URL
+var url = $('#streamurl').text().trim();
+var media = null;
+if (url != '') {
+  MPD.stream = window.location.protocol+'//'+window.location.host+url
+  media = {'mp3': MPD.stream}; //assume mp3
+  if (MPD.stream.split('.').pop()=='ogg') //ogg -> oga type
+    media = {'oga': MPD.stream};
 }
 
 //entry function
@@ -20,7 +31,7 @@ $(document).ready(function(){
   //init sliders
   $('#volume').slider();
   $('#progress').slider({tooltip:'hide',id:"progressbar"}); //id required for css
-  
+
   //init local timer (current pos, length)
   trackTimer();
   //initial interface update
@@ -68,6 +79,17 @@ $(document).ready(function(){
   $('#btnsetpw').click(onSetPwClick);
   $('#pw').keypress(onPwChange);
 
+  //init jplayer if stream exists
+  if (MPD.stream != null) {
+    $('#stream-jplayer').jPlayer({
+      ready: function() {
+        $('#stream-jplayer').jPlayer('setMedia', media);
+      },
+      swfPath: 'http://www.jplayer.org/latest/js/Jplayer.swf',
+    });
+    $('#btnstream').click(onStreamClick);
+  }
+
   doPoll();          //init long polling
 });
 
@@ -110,13 +132,14 @@ function setClass(id, name, val) {
 function setBtnActive(id, val) { setClass(id, 'active', val); }
 function setBtnEnabled(id, val) { setClass(id, 'disabled', !val); }
 
-function updatePauseButton(val) {
-    if (val) {
-      $("#btnpause-icon").removeClass("glyphicon-pause").addClass("glyphicon-play");
+function togglePlayIcon(id, b) {
+    if (b) {
+      $(id).removeClass('glyphicon-pause').addClass('glyphicon-play');
     } else {
-      $("#btnpause-icon").removeClass("glyphicon-play").addClass("glyphicon-pause");
+      $(id).removeClass('glyphicon-play').addClass('glyphicon-pause');
     }
 }
+function updatePauseButton(val) { togglePlayIcon('#btnpause-icon', val); }
 
 function updateStateIcon(state) {
   if (state=="Playing") {
@@ -153,7 +176,7 @@ function updateProgress(time) {
 
 // Highlight current song in bold (waits until all get requests finish except poll)
 function updateQueueHighlighted(index) {
-    if (index==null || MPD.status.stState=="Stopped")
+    if (index==null || (MPD.status && MPD.status.stState=="Stopped"))
       return;
 
     if (MPD.waiting != 0) { //not sync -> wait and retry
@@ -519,3 +542,12 @@ function onSetPwClick() {
 
 function onOutputSet(id, val) { MPDexec('outputs/'+id+'/'+(val?'True':'False')); }
 
+function onStreamClick() {
+  var player = $('#stream-jplayer');
+  if ($('#btnstream-icon').hasClass('glyphicon-play')) {
+    player.jPlayer('play');
+  } else {
+    player.jPlayer('stop');
+  }
+  togglePlayIcon('#btnstream-icon', !$('#btnstream-icon').hasClass('glyphicon-play'));
+}

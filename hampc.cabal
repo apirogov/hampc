@@ -32,20 +32,34 @@ executable hampc
                      , containers >=0.5
                      , text >=1.1
                      , mtl >=2.1
-                     , syb >=0.4
+                     , monad-loops >=0.3
                      , optparse-applicative >=0.10
-                     , libmpd >=0.9
+
+                     , http-common >=0.7
                      , http-types >=0.8
+                     , network >=2.4
                      , wai-extra >=3.0
-                     , wai-middleware-static
+                     , wai-middleware-static >=0.6
+                     , wai >=3.0
+                     , warp >=3.0
+                     , warp-tls >=3.0
                      , scotty >=0.9
-                     , scotty-tls >=0.3
+                     , blaze-builder >=0.3
+                     , blaze-html >=0.7
+                     , blaze-markup >=0.6
+                     , clay >=0.9
+
+                     , wai-websockets >=3.0
+                     , websockets >=0.8
+
+                     , libmpd >=0.9
                      , stm >=2.4
                      , time >=1.4
                      , aeson >=0.7
-                     , blaze-html >=0.7
-                     , blaze-markup
-                     , clay >=0.9
+                     , syb >=0.4
+
+                     , http-streams >=0.7
+                     , io-streams >=1.1
   ghc-options:         -Wall -fno-warn-unused-do-bind -fno-warn-missing-signatures -fno-warn-name-shadowing -fno-warn-orphans
   default-extensions:  OverloadedStrings
   other-extensions:    DeriveGeneric, StandaloneDeriving

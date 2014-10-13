@@ -41,7 +41,7 @@ layout t b = docTypeHtml $ do
 
              script' "js/jquery.min.js"
              script' "js/jquery.storageapi.min.js"
-             script' "js/jquery.jplayer.min.js"
+             script' "js/jquery.jplayer.js"
              script' "js/bootstrap.min.js"
              script' "js/bootstrap-slider.js"
              script' "js/Sortable.min.js"

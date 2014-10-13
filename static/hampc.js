@@ -85,7 +85,7 @@ $(document).ready(function(){
       ready: function() {
         $('#stream-jplayer').jPlayer('setMedia', media);
       },
-      swfPath: 'http://www.jplayer.org/latest/js/Jplayer.swf',
+      swfPath: 'js/Jplayer.swf',
     });
     $('#btnstream').click(onStreamClick);
   }
@@ -145,7 +145,7 @@ function togglePlayIcon(id, b) {
       $(id).removeClass('glyphicon-play').addClass('glyphicon-pause');
     }
 }
-function updatePauseButton(val) { togglePlayIcon('#btnpause-icon', val); }
+function updatePauseButton() { togglePlayIcon('#btnpause-icon', MPD.status.stState!="Playing"); }
 
 function updateStateIcon(state) {
   if (state=="Playing") {
@@ -469,6 +469,8 @@ function mpdget(url, callback) {
 function MPDexec(str) { $.get(withMPDpref(str), null); }
 
 // ---- handling user input ----
+
+// load a panel, hide the others, highlight correct button
 function loadTabCallback(buttonid, panelid) {
   return function() {
     $('.panel-primary').hide();
@@ -478,12 +480,21 @@ function loadTabCallback(buttonid, panelid) {
   };
 }
 
-
-function onPreviousClick() { MPDexec('previous'); }
-function onNextClick() { MPDexec('next'); }
-function onStopClick() { MPDexec('stop'); }
+function onPreviousClick() {
+  MPDexec('previous');
+}
+function onNextClick() {
+  MPDexec('next');
+}
+function onStopClick() {
+  MPDexec('stop');
+}
 function onPauseClick() {
-  trackTimer.enabled ? MPDexec('pause/True') : MPDexec('play');
+  trackTimer.enabled ? MPDexec('pause/True') : MPDexec('play'); //send request
+  MPD.status.stState = MPD.status.stState=="Playing" ? "Paused" : "Playing";
+  trackTimer.enabled = !trackTimer.enabled;
+  updatePauseButton(); //fake it (for UI experience)
+
 }
 
 function onVolumeSlide() {

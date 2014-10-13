@@ -23,6 +23,7 @@ so it is raw JS with Bootstrap and JQuery on the client side.
 * You can toggle the available outputs
 * Also works over HTTPS, protecting your MPD password
 * Built-in MPD stream player
+* Works better on mobile devices (tested with Nexus 5)
 * Long-polling instead of websockets
 
 Installation
@@ -46,5 +47,4 @@ Missing / TODO
 --------------
 * Support to create and manage playlists
 * Support for queries
-* Make usable on mobile devices
 * fix stream glitching when toggling stream pause in firefox, if possible

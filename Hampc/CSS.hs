@@ -17,7 +17,9 @@ layoutCss = renderWith pretty [] $ do
     width $ pct 80
     height $ px 15
     marginTop $ px 3
-  element "#time" ? fontSize (pt 16)
+  element "#title" ? fontSize (px 35)
+  element "#time" ? fontSize (px 24)
+  element "#album,#artist" ? fontSize (px 18)
   element "#btnstream" ? marginTop (px 5)
   element "#streamurl" ? display displayNone
   element "#notify" ? display displayNone

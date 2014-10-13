@@ -23,7 +23,7 @@ so it is raw JS with Bootstrap and JQuery on the client side.
 * You can toggle the available outputs
 * Also works over HTTPS, protecting your MPD password
 * Built-in MPD stream player
-* Long-polling instead of websockets (at least now)
+* Long-polling instead of websockets
 
 Installation
 ------------

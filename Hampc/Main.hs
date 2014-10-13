@@ -5,16 +5,12 @@ import           Hampc.MPDHttpRestream
 
 import           Control.Monad (unless)
 import           Options.Applicative
-import           Data.Text.Lazy (pack)
 
 import           Network.URI                          (isURI, uriPath, parseURI)
 import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
 import           Network.Wai.Middleware.Static        (addBase, noDots, staticPolicy, (>->))
-import           Network.Wai.Handler.Warp             (defaultSettings, setPort, run)
-import           Network.Wai.Handler.WarpTLS          (certFile, defaultTlsSettings, keyFile, runTLS)
-import           Network.Wai.Handler.WebSockets       (websocketsOr)
-import           Network.WebSockets                   (defaultConnectionOptions)
 import           Web.Scotty
+import           Web.Scotty.TLS
 
 data Args = Args {
               argHost :: String
@@ -48,10 +44,10 @@ myScottyApp args = do
   let url = argURL args
       path = "/stream" ++ (maybe ("/"::String) uriPath $ parseURI url)
       strurl = if null url then "" else path
-  middleware logStdoutDev -- for nice log output
+  middleware logStdoutDev                                 -- for nice log output
   middleware $ staticPolicy (noDots >-> addBase "static") -- for pics, JS stuff
 
-  get "/" $ html $ mainPage (pack strurl)             -- deliver web app
+  get "/" $ html $ mainPage strurl           -- deliver web app
   mpdRoutes (argHost args) (argPort args)    -- MPD control API route
   streamRoute url
 
@@ -65,10 +61,10 @@ main = do
 
   unless (null url || isURI url) $ error "invalid stream url!"
 
-  httpApp <- scottyApp $ myScottyApp args
-  let warpRun = if argUseTLS args --combine scotty+websockets, decide about TLS
-                then runTLS (defaultTlsSettings { keyFile = key , certFile = crt })
-                            (setPort prt defaultSettings)
-                else run prt
-  warpRun $ websocketsOr defaultConnectionOptions (websocketApp url) httpApp
+  --combine scotty+websockets, decide about TLS
+  let run = if argUseTLS args
+            then scottyTLS prt key crt
+            else scotty prt
+  --go!
+  run $ myScottyApp args
 

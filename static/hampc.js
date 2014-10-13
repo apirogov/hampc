@@ -521,6 +521,7 @@ function onQueueDrop(item, pos, sup, ev) {
 function onDirEnterClick(i) {
   MPD.currdir.push(i);
   updateDirectory();
+  window.scrollTo(0,0);
 }
 
 function onDirAddClick(i) { MPDexec('add/'+MPD.currdir.join(',')+','+i); }
@@ -528,8 +529,8 @@ function onDirAddClick(i) { MPDexec('add/'+MPD.currdir.join(',')+','+i); }
 function onCrumbClick(index) {
   MPD.currdir = MPD.currdir.slice(0,index);
   updateDirectory();
+  window.scrollTo(0,0);
 }
-
 
 function onPwChange() {
   $('#panelPassword').removeClass('panel-success').addClass('panel-default');

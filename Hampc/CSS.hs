@@ -10,7 +10,7 @@ layoutCss = renderWith pretty [] $ do
   body ? minHeight (px 2000)
   element "a:focus" ? outlineStyle none
   element ".starter-template" ? marginTop (px 100)
-  element "#search" ? marginRight 0
+  element ".navbar-form" |> ".form-group" |> "input" ? marginRight (px 5)
   element ".slider-selection" ? background (rgb 186 186 186)
   element "#volumebar" ? height (px 15)
   element "#progressbar" ? do
@@ -18,8 +18,10 @@ layoutCss = renderWith pretty [] $ do
     height $ px 15
     marginTop $ px 3
   element "#time" ? fontSize (pt 16)
+  element "#btnstream" ? marginTop (px 5)
   element "#streamurl" ? display displayNone
   element "#notify" ? display displayNone
   element "#panelBrowse" ? display displayNone
   element "#panelSettings" ? display displayNone
-  -- element "#queue" ** "th:nth-child(3)" ** "td:nth-child(3)" ? textAlign (alignSide sideRight)
+  element "table" ** "th:first-child,th:last-child,td:first-child,td:last-child" ? width (px 30)
+  element "table" ** "th:nth-child(3),td:nth-child(3)" ? textAlign (alignSide sideRight)

@@ -2,7 +2,7 @@ module Hampc.Site where
 import           Prelude                     hiding (div, head, id, span, null)
 import           Data.Monoid                 ((<>))
 
-import           Data.Text.Lazy              (toStrict, pack, null)
+import           Data.Text.Lazy              (toStrict, pack)
 import           Hampc.CSS                   (layoutCss)
 
 import           Text.Blaze.Html5
@@ -29,22 +29,22 @@ layout t b = docTypeHtml $ do
 
              title t
 
-             css "//netdna.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
-             css "//netdna.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css"
-             css "//seiyria.github.io/bootstrap-slider/stylesheets/bootstrap-slider.css"
+             css "css/bootstrap.min.css"
+             css "css/bootstrap-theme.min.css"
+             css "css/bootstrap-slider.css"
 
-             link ! href "favicon.ico" ! rel "shortcut icon" ! type_ "image/vnd.microsoft.icon"
+             link ! href "img/favicon.ico" ! rel "shortcut icon" ! type_ "image/vnd.microsoft.icon"
              style $ preEscapedText $ toStrict layoutCss
 
            body $ do
              navBar >> b
 
-             script' "//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"
-             script' "//raw.githubusercontent.com/julien-maurel/jQuery-Storage-API/master/jquery.storageapi.min.js"
-             script' "//johnny.github.io/jquery-sortable/js/jquery-sortable.js"
-             script' "//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
-             script' "//seiyria.github.io/bootstrap-slider/javascripts/bootstrap-slider.js"
-             script' "jquery.jplayer.min.js"
+             script' "js/jquery.min.js"
+             script' "js/jquery.storageapi.min.js"
+             script' "js/jquery-sortable.js"
+             script' "js/bootstrap.min.js"
+             script' "js/bootstrap-slider.js"
+             script' "js/jquery.jplayer.min.js"
              script' "hampc.js"
 
 navBar :: Html
@@ -57,13 +57,13 @@ navBar = div ! class_ "navbar navbar-inverse navbar-fixed-top" ! customAttribute
                      span ! class_ "icon-bar" $ ""
                      span ! class_ "icon-bar" $ ""
               span ! class_ "navbar-brand" $
-                img ! src "hampc.png" ! width "32" ! height "32" ! alt "hampc" >> (span $ "hampc")
+                img ! src "img/hampc.png" ! width "32" ! height "32" ! alt "hampc" >> (span $ "hampc")
 
             div ! class_ "navbar-collapse collapse" $ do
               ul ! class_ "nav navbar-nav" $ do
                 li ! id "navqueue" ! class_ "active" $ a ! href "#" $ "Queue"
                 li ! id "navbrowse" $ a ! href "#browse" $ "Browse"
-                li ! id "navplaylists" $ a ! href "#playlists" $ "Playlists"
+                -- li ! id "navplaylists" $ a ! href "#playlists" $ "Playlists"
                 li ! id "navsettings" $ a ! href "#settings" $ "Settings"
 
               div ! class_ "btn-toolbar navbar-btn navbar-right" ! customAttribute "role" "toolbar" $ do
@@ -141,11 +141,11 @@ mainPage streamURL =
                     div ! id "btn-responsive-block" ! class_ "btn-group-vertical btn-block btn-group-lg" $ do
                       button' "btnupdate" "refresh" "Update DB"
                       button' "btnclear" "trash" "Clear Queue"
-                    if null streamURL
+                    if streamURL==""
                     then preEscapedText ""
                     else do
-                      div ! id "streamurl" $ preEscapedText (toStrict streamURL)
+                      div ! id "streamurl" $ (preEscapedText $ toStrict $ pack streamURL)
                       div ! id "stream-jplayer" ! class_ "jp-jplayer" $ ""
-                      div ! class_ "btn-group-vertical btn-block btn-group-lg" $
+                      div ! id "btn-responsive-block" ! class_ "btn-group-vertical btn-block btn-group-lg" $
                         button' "btnstream" "play" "Stream"
 

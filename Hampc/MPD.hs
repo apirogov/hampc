@@ -217,4 +217,3 @@ mpdRoutes host port = do
     getmpd' "/playlists/:id" $ param "id" >>= mpdo' listPlaylistById
     getmpd' "/playlists/:id/load" $ param "id" >>= mpdo' loadPlaylistById
 
--- TODO: support for queries? playlist creation/modification?

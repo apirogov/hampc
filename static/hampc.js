@@ -59,12 +59,12 @@ $(document).ready(function(){
 
   // queue
   $('#progress').on('slideStop', onSongSlide);
-  $('#queue').sortable({
-    containerSelector: 'table',
-    itemPath: ' > tbody ',
-    itemSelector: 'tr',
-    onDrag: onQueueDrag,
-    onDrop: onQueueDrop
+
+  new Sortable($('#queue > tbody')[0], {
+    draggable: "tr",
+    handle: ".sort-drag",
+    onStart: onQueueDrag,
+    onEnd: onQueueDrop
   });
 
   // right col
@@ -121,6 +121,12 @@ function trackTimer() {
   setTimeout(trackTimer, 1000);
 }
 // --- helper methods ---
+
+function fadeOutIn(id) {
+  $(id).fadeOut('fast', function() {
+    $(id).fadeIn('slow', null);
+  });
+}
 
 function setClass(id, name, val) {
   if (val === true) {
@@ -209,12 +215,12 @@ function rowFromSong(song) {
   var title = getTag(tags.Title, file);
   var dur = secToTime(parseInt(song.sgLength, 10));
   var r = '<tr>'
-  r += '<td>'+(song.sgIndex+1)+'</td>';
+  r += '<td class="sort-drag" style="cursor:move;">'+(song.sgIndex+1)+'</td>';
   r+='<td onclick="onQueuePlay('+song.sgIndex+')" style="cursor:pointer;">';
   if (artist != '')
     r += artist + ' - ';
   r += title + '</td><td>' + dur + '</td>';
-  r += '<td>' +icon('trash','onQueueTrash('+song.sgIndex+');') +'</td>';
+  r += '<td>' +icon('trash','onQueueTrash('+song.sgIndex+');fadeOutIn(this);') +'</td>';
   r += '</tr>';
   return r;
 }
@@ -228,7 +234,7 @@ function rowFromDirSong(i, song) {
   var dur = secToTime(parseInt(song.sgLength, 10));
   var r = '<tr>'
   r += '<td>'+icon('music')+'</td>';
-  r+='<td onclick="onDirAddClick('+i+')" style="cursor:pointer;">';
+  r+='<td onclick="onDirAddClick('+i+');fadeOutIn(this);" style="cursor:pointer;">';
   if (artist != '')
     r += artist + ' - ';
   r += title + '</td><td>' + dur + '</td>';
@@ -254,7 +260,7 @@ function rowFromDirEntry(i, item) {
     var name=item.contents.replace(/^.*\//,'');
     var r ='<tr><td>'+icon('folder-open')+'</td>';
     r += '<td><a onclick="onDirEnterClick('+i+');" style="cursor:pointer;">'
-      +name+'</a></td><td /><td>'+icon('plus','onDirAddClick('+i+');')+'</td>';
+      +name+'</a></td><td /><td>'+icon('plus','onDirAddClick('+i+');fadeOutIn(this);')+'</td>';
     return r;
   } else if (item.tag=='LsPlaylist') { //we dont include playlists in dir tree
     return '';
@@ -505,18 +511,17 @@ function onQueuePlay(index) {
   MPDexec('play/'+index);
 }
 
-function onQueueDrag(item, pos, sup, ev) {
-  $('#queue').attr('data-previndex', item.index());
+var deb
+function onQueueDrag(ev) {
+  $('#queue').attr('data-previndex', $(ev.item).index());
 }
-function onQueueDrop(item, pos, sup, ev) {
+function onQueueDrop(ev) {
   var oldi = $('#queue').attr('data-previndex');
-  var newi = item.index();
-  if (oldi > newi) oldi--; //because index shift
+  var newi = $(ev.item).index();
   MPDexec('move/'+oldi+'/'+newi); //move item
   //cleanup
   $('#queue').removeAttr('data-previndex');
 }
-
 
 function onDirEnterClick(i) {
   MPD.currdir.push(i);

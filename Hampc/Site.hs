@@ -41,10 +41,10 @@ layout t b = docTypeHtml $ do
 
              script' "js/jquery.min.js"
              script' "js/jquery.storageapi.min.js"
-             script' "js/jquery-sortable.js"
+             script' "js/jquery.jplayer.min.js"
              script' "js/bootstrap.min.js"
              script' "js/bootstrap-slider.js"
-             script' "js/jquery.jplayer.min.js"
+             script' "js/Sortable.min.js"
              script' "hampc.js"
 
 navBar :: Html
